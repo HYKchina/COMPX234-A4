@@ -82,6 +82,14 @@ public class UDPserver {
                 byte[] responseData = new byte[response.length() + bytesRead];
                 System.arraycopy(response.getBytes(), 0, responseData, 0, response.length());
                 System.arraycopy(buffer, 0, responseData, response.length(), bytesRead);
+
+                // 发送数据块
+                DatagramPacket packet = new DatagramPacket(
+                    responseData, responseData.length, clientAddress, clientPort);
+                socket.send(packet);
+            
+                bytesSent += bytesRead;
+                System.out.print(".");
             }
             System.out.println("\nTransfer completed: " + filename);
         } catch (IOException e) {
