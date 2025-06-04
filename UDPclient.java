@@ -6,6 +6,10 @@ public class UDPclient {
             System.out.println("Usage: java UDPclient <host> <port> <filelist>");
             return;
         }
-
+            
+            String host = args[0];
+            int port = Integer.parseInt(args[1]);
+            String fileList = args[2];
+        
     }
 }
