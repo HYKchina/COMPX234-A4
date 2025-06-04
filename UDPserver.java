@@ -76,6 +76,12 @@ public class UDPserver {
                 file.seek(bytesSent);
                 int bytesRead = file.read(buffer, 0, bytesToRead);
                 if (bytesRead == -1) break;
+
+                // 准备响应
+                String response = String.format("FILE %s DATA %d %d ", filename, bytesSent, bytesSent + bytesRead - 1);
+                byte[] responseData = new byte[response.length() + bytesRead];
+                System.arraycopy(response.getBytes(), 0, responseData, 0, response.length());
+                System.arraycopy(buffer, 0, responseData, response.length(), bytesRead);
             }
             System.out.println("\nTransfer completed: " + filename);
         } catch (IOException e) {
