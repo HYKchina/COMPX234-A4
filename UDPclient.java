@@ -1,5 +1,4 @@
 import java.io.IOException;
-import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
@@ -20,7 +19,8 @@ public class UDPclient {
             DatagramSocket clientSocket = new DatagramSocket();
             InetAddress serverAddress = InetAddress.getByName(host);
             
+        } catch (IOException e) {
+            System.err.println("Client error: " + e.getMessage());
         }
-        
     }
 }
