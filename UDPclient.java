@@ -26,6 +26,13 @@ public class UDPclient {
             DatagramPacket sendPacket = new DatagramPacket(
                 sendData, sendData.length, serverAddress, port);
             clientSocket.send(sendPacket);
+
+            // 接收响应
+            byte[] receiveData = new byte[1024];
+            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+            clientSocket.receive(receivePacket);
+            String response = new String(receivePacket.getData(), 0, receivePacket.getLength());
+            System.out.println("Server response: " + response);
             
         } catch (IOException e) {
             System.err.println("Client error: " + e.getMessage());
