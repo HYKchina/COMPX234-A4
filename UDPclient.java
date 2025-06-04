@@ -1,3 +1,7 @@
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 
 public class UDPclient {
     public static void main(String[] args) {
@@ -10,6 +14,13 @@ public class UDPclient {
             String host = args[0];
             int port = Integer.parseInt(args[1]);
             String fileList = args[2];
+        
+        try {
+            // 创建客户端Socket
+            DatagramSocket clientSocket = new DatagramSocket();
+            InetAddress serverAddress = InetAddress.getByName(host);
+            
+        }
         
     }
 }
