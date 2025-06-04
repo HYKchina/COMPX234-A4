@@ -68,5 +68,17 @@ public class UDPclient {
         try (RandomAccessFile file = new RandomAccessFile(filename, "rw")) {
             file.setLength(fileSize); // 预分配空间
         }
+        long bytesReceived = 0;
+        System.out.print("Downloading " + filename + ": ");
+        while (bytesReceived < fileSize) {
+            // 请求下一个数据块
+            String request = "GET " + filename + " " + bytesReceived;
+            byte[] requestData = request.getBytes();
+            DatagramPacket requestPacket = new DatagramPacket(
+                requestData, requestData.length, serverAddress, serverPort);
+            socket.send(requestPacket);
+            
+        }
+        System.out.println("\nDownload completed: " + filename);
     }
 }
