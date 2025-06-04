@@ -1,5 +1,4 @@
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -40,7 +39,7 @@ public class UDPclient {
             System.err.println("Client error: " + e.getMessage());
         }
     }
-    // 在UDPclient类中添加以下方法
+
     private static String sendDownloadRequest(DatagramSocket socket, String filename, 
                                        InetAddress serverAddress, int serverPort) throws IOException {
         String request = "DOWNLOAD " + filename;
@@ -62,40 +61,31 @@ public class UDPclient {
             return null;
         }
     }
-    // 在UDPclient类中添加以下方法
-    private static void downloadFile(DatagramSocket socket, String filename, long fileSize,
-                                   InetAddress serverAddress, int serverPort) throws IOException {
-        try (RandomAccessFile file = new RandomAccessFile(filename, "rw")) {
-            file.setLength(fileSize); // 预分配空间
-        }
-        long bytesReceived = 0;
-        System.out.print("Downloading " + filename + ": ");
-        while (bytesReceived < fileSize) {
-            // 请求下一个数据块
-            String request = "GET " + filename + " " + bytesReceived;
-            byte[] requestData = request.getBytes();
-            DatagramPacket requestPacket = new DatagramPacket(
-                requestData, requestData.length, serverAddress, serverPort);
-            socket.send(requestPacket);
 
-            byte[] receiveData = new byte[2048]; // 接收缓冲区（足够大的空间）
-            DatagramPacket receivePacket = new DatagramPacket(
-            receiveData,             // 接收缓冲区
-            receiveData.length       // 缓冲区大小
-    );
-    
-    // 3. 配置重试机制
-    int timeout = 1000;          // 初始超时时间1秒
-    int attempts = 0;            // 当前尝试次数
-            
-        }
-        System.out.println("\nDownload completed: " + filename);
-    }
     private static String sendAndReceive(DatagramSocket socket, String message, 
                                    InetAddress address, int port, int maxRetries) throws IOException {
-    byte[] sendData = message.getBytes();
-    DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, address, port);
+        byte[] sendData = message.getBytes();
+        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, address, port);
     
-    return null;
+        byte[] receiveData = new byte[2048];
+        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+    
+        int timeout = 1000; // 初始超时1秒
+        int attempts = 0;
+    
+        while (attempts < maxRetries) {
+            try {
+                socket.send(sendPacket);
+                socket.setSoTimeout(timeout);
+            
+                socket.receive(receivePacket);
+                return new String(receivePacket.getData(), 0, receivePacket.getLength()).trim();
+            } catch (SocketTimeoutException e) {
+                attempts++;
+                System.out.println("Timeout, retry " + attempts + " of " + maxRetries);
+                timeout *= 2; // 指数退避
+            }
+        }
+        return null; // 所有重试都失败
     }
 }
