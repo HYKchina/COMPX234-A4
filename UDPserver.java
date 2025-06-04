@@ -71,7 +71,11 @@ public class UDPserver {
             long bytesSent = 0;
         
             while (bytesSent < fileSize) {
-                
+                // 读取文件块
+                int bytesToRead = (int) Math.min(buffer.length, fileSize - bytesSent);
+                file.seek(bytesSent);
+                int bytesRead = file.read(buffer, 0, bytesToRead);
+                if (bytesRead == -1) break;
             }
             System.out.println("\nTransfer completed: " + filename);
         } catch (IOException e) {
