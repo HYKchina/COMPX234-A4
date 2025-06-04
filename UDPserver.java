@@ -4,29 +4,30 @@ import java.net.DatagramSocket;
 
 public class UDPserver {
     public static void main(String[] args) {
-        // 验证命令行参数
+         // Validate command line arguments
         if (args.length != 1) {
             System.out.println("Usage: java UDPserver <port>");
             return;
         }
-        int port = Integer.parseInt(args[0]);
+
+        int port = Integer.parseInt(args[1]);
 
         try {
-            // 创建服务器Socket
+            // Create server socket
             DatagramSocket serverSocket = new DatagramSocket(port);
             System.out.println("Server started on port " + port);
             
-            // 主循环等待客户端请求
+            // Main loop to wait for client requests
             while (true) {
                 byte[] buffer = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 
-                // 接收客户端请求
+                // Receive client request
                 serverSocket.receive(packet);
                 String request = new String(packet.getData(), 0, packet.getLength()).trim();
                 System.out.println("Received: " + request);
                 
-                // 简单响应
+                // Simple response
                 String response = "ECHO: " + request;
                 byte[] responseData = response.getBytes();
                 DatagramPacket responsePacket = new DatagramPacket(
