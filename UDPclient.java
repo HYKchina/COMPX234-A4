@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -61,6 +62,11 @@ public class UDPclient {
             return null;
         }
     }
-
-    
+    // 在UDPclient类中添加以下方法
+    private static void downloadFile(DatagramSocket socket, String filename, long fileSize,
+                                   InetAddress serverAddress, int serverPort) throws IOException {
+        try (RandomAccessFile file = new RandomAccessFile(filename, "rw")) {
+            file.setLength(fileSize); // 预分配空间
+        }
+    }
 }
