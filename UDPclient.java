@@ -81,4 +81,11 @@ public class UDPclient {
         }
         System.out.println("\nDownload completed: " + filename);
     }
+    private static String sendAndReceive(DatagramSocket socket, String message, 
+                                   InetAddress address, int port, int maxRetries) throws IOException {
+    byte[] sendData = message.getBytes();
+    DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, address, port);
+    
+    return null;
+    }
 }
