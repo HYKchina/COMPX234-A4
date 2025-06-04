@@ -1,7 +1,9 @@
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 
 public class UDPserver {
     public static void main(String[] args) {
@@ -56,6 +58,24 @@ public class UDPserver {
                 responseData, responseData.length,
                 packet.getAddress(), packet.getPort());
             serverSocket.send(responsePacket);
+        }
+    }
+
+    private static void handleFileTransfer(DatagramSocket socket, String filename, 
+                                         InetAddress clientAddress, int clientPort) {
+        try (RandomAccessFile file = new RandomAccessFile(filename, "r")) {
+            long fileSize = file.length();
+            System.out.println("Starting transfer of " + filename + " (" + fileSize + " bytes)");
+        
+            byte[] buffer = new byte[1000]; // 每次传输最多1000字节
+            long bytesSent = 0;
+        
+            while (bytesSent < fileSize) {
+                
+            }
+            System.out.println("\nTransfer completed: " + filename);
+        } catch (IOException e) {
+            System.err.println("Error transferring file: " + e.getMessage());
         }
     }
 }
