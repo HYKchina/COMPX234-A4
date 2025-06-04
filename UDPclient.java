@@ -5,7 +5,7 @@ import java.net.InetAddress;
 
 public class UDPclient {
     public static void main(String[] args) {
-        // 验证命令行参数
+        // Validate command line arguments
         if (args.length != 3) {
             System.out.println("Usage: java UDPclient <host> <port> <filelist>");
             return;
@@ -16,18 +16,18 @@ public class UDPclient {
             String fileList = args[2];
         
         try {
-            // 创建客户端Socket
+            // Create client socket
             DatagramSocket clientSocket = new DatagramSocket();
             InetAddress serverAddress = InetAddress.getByName(host);
 
-            // 测试发送消息
+            // Send test message
             String testMessage = "TEST MESSAGE";
             byte[] sendData = testMessage.getBytes();
             DatagramPacket sendPacket = new DatagramPacket(
                 sendData, sendData.length, serverAddress, port);
             clientSocket.send(sendPacket);
 
-            // 接收响应
+            // Receive response
             byte[] receiveData = new byte[1024];
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
             clientSocket.receive(receivePacket);
