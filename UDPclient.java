@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketTimeoutException;
 
 public class UDPclient {
     public static void main(String[] args) {
@@ -38,4 +39,28 @@ public class UDPclient {
             System.err.println("Client error: " + e.getMessage());
         }
     }
+    // 在UDPclient类中添加以下方法
+    private static String sendDownloadRequest(DatagramSocket socket, String filename, 
+                                       InetAddress serverAddress, int serverPort) throws IOException {
+        String request = "DOWNLOAD " + filename;
+        byte[] sendData = request.getBytes();
+        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverAddress, serverPort);
+        socket.send(sendPacket);
+    
+        // 设置超时
+        socket.setSoTimeout(5000); // 5秒超时
+    
+        // 接收响应
+        byte[] receiveData = new byte[1024];
+        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+        try {
+            socket.receive(receivePacket);
+            return new String(receivePacket.getData(), 0, receivePacket.getLength()).trim();
+        } catch (SocketTimeoutException e) {
+            System.out.println("Timeout while waiting for server response");
+            return null;
+        }
+    }
+
+    
 }
