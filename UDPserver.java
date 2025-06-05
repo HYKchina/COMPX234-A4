@@ -5,6 +5,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.Base64;
+import java.util.Random;
 
 public class UDPserver {
     public static void main(String[] args) {
@@ -22,16 +23,54 @@ public class UDPserver {
             System.out.println("Server started on port " + port);
             
             // Main loop to wait for client requests
+           
             while (true) {
                 byte[] buffer = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                
-                // Receive client request
                 serverSocket.receive(packet);
-                
-                // 调用 handleDownloadRequest 方法处理请求
-                handleDownloadRequest(serverSocket, packet);
+    
+                String request = new String(packet.getData(), 0, packet.getLength()).trim();
+                String[] parts = request.split(" ");
+    
+                if (parts.length >= 2 && parts[0].equals("DOWNLOAD")) {
+                    String filename = parts[1];
+                    File file = new File(filename);
+        
+                    if (file.exists() && file.isFile()) {
+                        // 获取随机端口
+                        int dataPort = 50000 + new Random().nextInt(1000);
+            
+                        // 启动新线程处理文件传输
+                        new Thread(() -> {
+                            try (DatagramSocket dataSocket = new DatagramSocket(dataPort)) {
+                                // 发送OK响应
+                                String response = String.format("OK %s SIZE %d PORT %d", 
+                                    filename, file.length(), dataPort);
+                                byte[] responseData = response.getBytes();
+                                DatagramPacket responsePacket = new DatagramPacket(
+                                    responseData, responseData.length, 
+                                    packet.getAddress(), packet.getPort());
+                                dataSocket.send(responsePacket);
+                    
+                                // 处理文件传输
+                                handleFileTransfer(dataSocket, filename, 
+                                    packet.getAddress(), packet.getPort());
+                            } catch (IOException e) {
+                                System.err.println("Thread error: " + e.getMessage());
+                            }
+                        }).start();
+                    } else {
+                        // 发送错误响应
+                        String response = "ERR " + filename + " NOT_FOUND";
+                        byte[] responseData = response.getBytes();
+                        DatagramPacket responsePacket = new DatagramPacket(
+                            responseData, responseData.length,
+                            packet.getAddress(), packet.getPort());
+                        serverSocket.send(responsePacket);
+                    }
+                }
             }
+            
         } catch (IOException e) {
             System.err.println("Server error: " + e.getMessage());
         }
