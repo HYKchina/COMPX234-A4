@@ -23,23 +23,22 @@ public class UDPserver {
             System.out.println("Server started on port " + port);
             
             // Main loop to wait for client requests
-           
             while (true) {
                 byte[] buffer = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 serverSocket.receive(packet);
-    
+
                 String request = new String(packet.getData(), 0, packet.getLength()).trim();
                 String[] parts = request.split(" ");
-    
+
                 if (parts.length >= 2 && parts[0].equals("DOWNLOAD")) {
                     String filename = parts[1];
                     File file = new File(filename);
-        
+
                     if (file.exists() && file.isFile()) {
                         // 获取随机端口
                         int dataPort = 50000 + new Random().nextInt(1000);
-            
+
                         // 启动新线程处理文件传输
                         new Thread(() -> {
                             try (DatagramSocket dataSocket = new DatagramSocket(dataPort)) {
@@ -51,7 +50,7 @@ public class UDPserver {
                                     responseData, responseData.length, 
                                     packet.getAddress(), packet.getPort());
                                 dataSocket.send(responsePacket);
-                    
+
                                 // 处理文件传输
                                 handleFileTransfer(dataSocket, filename, 
                                     packet.getAddress(), packet.getPort());
@@ -70,7 +69,7 @@ public class UDPserver {
                     }
                 }
             }
-            
+
         } catch (IOException e) {
             System.err.println("Server error: " + e.getMessage());
         }
@@ -79,11 +78,11 @@ public class UDPserver {
     private static void handleDownloadRequest(DatagramSocket serverSocket, DatagramPacket packet) throws IOException {
         String request = new String(packet.getData(), 0, packet.getLength()).trim();
         String[] parts = request.split(" ");
-    
+
         if (parts.length >= 2 && parts[0].equals("DOWNLOAD")) {
             String filename = parts[1];
             File file = new File(filename);
-        
+
             // 准备响应
             String response;
             if (file.exists() && file.isFile()) {
@@ -91,7 +90,7 @@ public class UDPserver {
             } else {
                 response = "ERR " + filename + " NOT_FOUND";
             }
-        
+
             // 发送响应
             byte[] responseData = response.getBytes();
             DatagramPacket responsePacket = new DatagramPacket(
@@ -107,36 +106,36 @@ public class UDPserver {
         try (RandomAccessFile file = new RandomAccessFile(filename, "r")) {
             // Get the total size of the file
             long fileSize = file.length();
-        
+
             // Initialize buffer for reading file chunks and prepare Base64 encoding
             byte[] buffer = new byte[1000];
             long bytesSent = 0;
-            
+
             // Main transfer loop - continues until entire file is sent
             while (bytesSent < fileSize) {
                 // Wait for client to request a specific chunk
                 byte[] requestData = new byte[1024];
                 DatagramPacket requestPacket = new DatagramPacket(requestData, requestData.length);
                 socket.receive(requestPacket);
-            
+
                 // Parse client request
                 String request = new String(requestPacket.getData(), 0, requestPacket.getLength()).trim();
                 String[] parts = request.split(" ");
-            
+
                 // Check if request follows expected format: "FILE [filename] GET START x END y"
                 if (parts.length == 6 && parts[0].equals("FILE") && parts[2].equals("GET")) {
                     // Extract requested byte range
                     long start = Long.parseLong(parts[4]);
                     long end = Long.parseLong(parts[6]);
-                
+
                     // Read requested chunk from file
                     int length = (int)(end - start + 1);
                     file.seek(start);
                     file.read(buffer, 0, length);
-                
+
                     // Encode binary data to Base64 string and adjust length
                     String base64Data = Base64.getEncoder().encodeToString(buffer).substring(0, length*4/3+4);
-                
+
                     // Prepare and send response with file chunk
                     String response = String.format("FILE %s OK START %d END %d DATA %s", 
                         filename, start, end, base64Data);
@@ -146,14 +145,14 @@ public class UDPserver {
                     socket.send(responsePacket);
                 }
             }
-        
+
             // Send final close confirmation to client
             String closeResponse = "FILE " + filename + " CLOSE_OK";
             byte[] closeData = closeResponse.getBytes();
             DatagramPacket closePacket = new DatagramPacket(
                 closeData, closeData.length, clientAddress, clientPort);
             socket.send(closePacket);
-        
+
         } catch (IOException e) {
             // Handle any IO exceptions during file transfer
             System.err.println("File transfer error: " + e.getMessage());
