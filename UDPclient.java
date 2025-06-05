@@ -1,10 +1,19 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
+import java.util.Base64;
 
 public class UDPclient {
+
+    private static final int MAX_RETRIES = 5;
+    private static final int BLOCK_SIZE = 1000;
+    private static final int INITIAL_TIMEOUT = 1000;
+
     public static void main(String[] args) {
         // Validate command line arguments
         if (args.length != 3) {
@@ -12,32 +21,106 @@ public class UDPclient {
             return;
         }
             
-            String host = args[0];
-            int port = Integer.parseInt(args[1]);
-            String fileList = args[2];
+        String host = args[0];
+        int port = Integer.parseInt(args[1]);
+        String fileList = args[2];
+
+        try (DatagramSocket clientSocket = new DatagramSocket();
+         BufferedReader br = new BufferedReader(new FileReader(fileList))) {
         
-        try {
-            // Create client socket
-            DatagramSocket clientSocket = new DatagramSocket();
-            InetAddress serverAddress = InetAddress.getByName(host);
-
-            // Send test message
-            String testMessage = "TEST MESSAGE";
-            byte[] sendData = testMessage.getBytes();
-            DatagramPacket sendPacket = new DatagramPacket(
-                sendData, sendData.length, serverAddress, port);
-            clientSocket.send(sendPacket);
-
-            // Receive response
-            byte[] receiveData = new byte[1024];
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            clientSocket.receive(receivePacket);
-            String response = new String(receivePacket.getData(), 0, receivePacket.getLength());
-            System.out.println("Server response: " + response);
+        InetAddress serverAddress = InetAddress.getByName(host);
+        String filename;
+        
+        while ((filename = br.readLine()) != null) {
+            filename = filename.trim();
+            if (filename.isEmpty()) continue;
             
-        } catch (IOException e) {
-            System.err.println("Client error: " + e.getMessage());
+            System.out.print("Starting download: " + filename + " ");
+            
+            // 1. 发送初始下载请求
+            String response = sendAndReceive(
+                clientSocket,
+                "DOWNLOAD " + filename,
+                serverAddress,
+                port,
+                MAX_RETRIES
+            );
+            
+            // 2. 处理服务器响应
+            if (response == null || response.startsWith("ERR")) {
+                System.out.println("\n! Failed to initiate download: " + 
+                    (response == null ? "No response" : response.split(" ")[2]));
+                continue;
+            }
+            
+            // 3. 解析文件信息
+            String[] resParts = response.split(" ");
+            long fileSize = Long.parseLong(resParts[3]);
+            int dataPort = Integer.parseInt(resParts[5]);
+            
+            // 4. 创建本地文件
+            try (RandomAccessFile localFile = new RandomAccessFile(filename, "rw")) {
+                localFile.setLength(fileSize); // 预分配空间
+                
+                // 5. 分块下载
+                long bytesReceived = 0;
+                int retryCount = 0;
+                
+                while (bytesReceived < fileSize && retryCount < MAX_RETRIES * 3) {
+                    long start = bytesReceived;
+                    long end = Math.min(start + BLOCK_SIZE - 1, fileSize - 1);
+                    
+                    // 发送块请求
+                    String blockRequest = String.format(
+                        "FILE %s GET START %d END %d",
+                        filename, start, end
+                    );
+                    
+                    String blockResponse = sendAndReceive(
+                        clientSocket,
+                        blockRequest,
+                        serverAddress,
+                        dataPort,
+                        MAX_RETRIES
+                    );
+                    
+                    // 处理块响应
+                    if (blockResponse == null || !blockResponse.contains("OK")) {
+                        retryCount++;
+                        System.out.print("x"); // 显示重试
+                        continue;
+                    }
+                    
+                    // 写入文件
+                    String[] blockParts = blockResponse.split("DATA ");
+                    byte[] fileData = Base64.getDecoder().decode(blockParts[1]);
+                    localFile.seek(start);
+                    localFile.write(fileData);
+                    bytesReceived += fileData.length;
+                    retryCount = 0; // 重置重试计数
+                    
+                    // 显示进度
+                    System.out.print(".");
+                }
+                
+                // 6. 完成处理
+                if (bytesReceived == fileSize) {
+                    // 发送关闭通知
+                    sendAndReceive(clientSocket, 
+                        "FILE " + filename + " CLOSE",
+                        serverAddress, dataPort, 1);
+                    System.out.println(" ✓ (" + fileSize + " bytes)");
+                } else {
+                    System.out.println("\n! Incomplete download (" + 
+                        bytesReceived + "/" + fileSize + " bytes)");
+                }
+            }
         }
+    } catch (IOException e) {
+        System.err.println("Client error: " + e.getMessage());
+    }
+
+        
     }
 
     private static String sendDownloadRequest(DatagramSocket socket, String filename, 
