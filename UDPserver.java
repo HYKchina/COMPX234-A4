@@ -4,6 +4,7 @@ import java.io.RandomAccessFile;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.Base64;
 
 public class UDPserver {
     public static void main(String[] args) {
@@ -62,38 +63,61 @@ public class UDPserver {
     }
 
     private static void handleFileTransfer(DatagramSocket socket, String filename, 
-                                         InetAddress clientAddress, int clientPort) {
+                                     InetAddress clientAddress, int clientPort) {
+        // Open the file in read-only mode using try-with-resources for automatic closure
         try (RandomAccessFile file = new RandomAccessFile(filename, "r")) {
+            // Get the total size of the file
             long fileSize = file.length();
-            System.out.println("Starting transfer of " + filename + " (" + fileSize + " bytes)");
         
-            byte[] buffer = new byte[1000]; // 每次传输最多1000字节
+            // Initialize buffer for reading file chunks and prepare Base64 encoding
+            byte[] buffer = new byte[1000];
             long bytesSent = 0;
-        
-            while (bytesSent < fileSize) {
-                // 读取文件块
-                int bytesToRead = (int) Math.min(buffer.length, fileSize - bytesSent);
-                file.seek(bytesSent);
-                int bytesRead = file.read(buffer, 0, bytesToRead);
-                if (bytesRead == -1) break;
-
-                // 准备响应
-                String response = String.format("FILE %s DATA %d %d ", filename, bytesSent, bytesSent + bytesRead - 1);
-                byte[] responseData = new byte[response.length() + bytesRead];
-                System.arraycopy(response.getBytes(), 0, responseData, 0, response.length());
-                System.arraycopy(buffer, 0, responseData, response.length(), bytesRead);
-
-                // 发送数据块
-                DatagramPacket packet = new DatagramPacket(
-                    responseData, responseData.length, clientAddress, clientPort);
-                socket.send(packet);
             
-                bytesSent += bytesRead;
-                System.out.print(".");
+            // Main transfer loop - continues until entire file is sent
+            while (bytesSent < fileSize) {
+                // Wait for client to request a specific chunk
+                byte[] requestData = new byte[1024];
+                DatagramPacket requestPacket = new DatagramPacket(requestData, requestData.length);
+                socket.receive(requestPacket);
+            
+                // Parse client request
+                String request = new String(requestPacket.getData(), 0, requestPacket.getLength()).trim();
+                String[] parts = request.split(" ");
+            
+                // Check if request follows expected format: "FILE [filename] GET START x END y"
+                if (parts.length == 5 && parts[0].equals("FILE") && parts[2].equals("GET")) {
+                    // Extract requested byte range
+                    long start = Long.parseLong(parts[4]);
+                    long end = Long.parseLong(parts[6]);
+                
+                    // Read requested chunk from file
+                    int length = (int)(end - start + 1);
+                    file.seek(start);
+                    file.read(buffer, 0, length);
+                
+                    // Encode binary data to Base64 string and adjust length
+                    String base64Data = Base64.getEncoder().encodeToString(buffer).substring(0, length*4/3+4);
+                
+                    // Prepare and send response with file chunk
+                    String response = String.format("FILE %s OK START %d END %d DATA %s", 
+                        filename, start, end, base64Data);
+                    byte[] responseData = response.getBytes();
+                    DatagramPacket responsePacket = new DatagramPacket(
+                        responseData, responseData.length, clientAddress, clientPort);
+                    socket.send(responsePacket);
+                }
             }
-            System.out.println("\nTransfer completed: " + filename);
+        
+            // Send final close confirmation to client
+            String closeResponse = "FILE " + filename + " CLOSE_OK";
+            byte[] closeData = closeResponse.getBytes();
+            DatagramPacket closePacket = new DatagramPacket(
+                closeData, closeData.length, clientAddress, clientPort);
+            socket.send(closePacket);
+        
         } catch (IOException e) {
-            System.err.println("Error transferring file: " + e.getMessage());
+            // Handle any IO exceptions during file transfer
+            System.err.println("File transfer error: " + e.getMessage());
         }
-    }
+    }    
 }
