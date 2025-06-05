@@ -119,7 +119,6 @@ public class UDPclient {
     } catch (IOException e) {
         System.err.println("Client error: " + e.getMessage());
     }
-
         
     }
 

@@ -124,7 +124,7 @@ public class UDPserver {
                 String[] parts = request.split(" ");
             
                 // Check if request follows expected format: "FILE [filename] GET START x END y"
-                if (parts.length == 5 && parts[0].equals("FILE") && parts[2].equals("GET")) {
+                if (parts.length == 6 && parts[0].equals("FILE") && parts[2].equals("GET")) {
                     // Extract requested byte range
                     long start = Long.parseLong(parts[4]);
                     long end = Long.parseLong(parts[6]);
