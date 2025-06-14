@@ -1,0 +1,4 @@
+# 创建有规律的文本文件便于验证
+for i in {1..100}; do 
+  echo "This is line $i of the small test file. COMPX234 Assignment 4 testing." >> small.txt
+done
